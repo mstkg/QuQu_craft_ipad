@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>九九クラフト DX - Battle Edition (Stable)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mc-bg: #1a1a1a;
+            --mc-panel-bg: rgba(0, 0, 0, 0.6);
+            --mc-border-light: #555;
+            --mc-border-highlight: #fff;
+            --mc-btn-face: #8b8b8b;
+            --mc-btn-shadow: #373737;
+            --mc-green: #80ff20;
+        }
+
+        body {
+            font-family: 'DotGothic16', sans-serif;
+            background-color: var(--mc-bg);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%232e2e2e'/%3E%3Cpath d='M2 2h4v4H2zM10 6h4v4h-4zM24 2h4v4h-4zM40 10h4v4h-4zM54 4h4v4h-4zM6 20h4v4H6zM18 16h4v4h-4zM34 22h4v4h-4zM50 18h4v4h-4zM60 28h4v4h-4zM4 36h4v4H4zM20 34h4v4h-4zM38 32h4v4h-4zM56 38h4v4h-4zM12 48h4v4h-4zM28 46h4v4h-4zM44 44h4v4h-4zM8 56h4v4H8zM24 58h4v4h-4zM48 54h4v4h-4zM58 60h4v4h-4z' fill='%233a3a3a'/%3E%3C/svg%3E");
+            background-size: 64px 64px;
+            image-rendering: pixelated;
+            color: white;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* UI枠 */
+        .mc-window {
+            background-color: #c6c6c6;
+            border: 4px solid #373737;
+            border-top-color: #fff;
+            border-left-color: #fff;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+            color: #222;
+        }
+
+        /* ボタン */
+        .mc-btn {
+            background-color: #8b8b8b;
+            border: 2px solid #373737;
+            border-top-color: #fff;
+            border-left-color: #fff;
+            box-shadow: inset -2px -2px 0 #555;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+            cursor: pointer;
+            position: relative;
+        }
+        .mc-btn:active {
+            border: 2px solid #fff;
+            border-top-color: #373737;
+            border-left-color: #373737;
+            background-color: #777;
+            top: 2px;
+        }
+
+        /* キーパッド */
+        .hotbar-slot {
+            background-color: rgba(0,0,0,0.3);
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+            cursor: pointer;
+            transition: transform 0.05s;
+        }
+        .hotbar-slot:active { transform: scale(0.95); background-color: rgba(255,255,255,0.1); }
+
+        /* チャットログ */
+        .chat-bg {
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(0,0,0,0.2);
+        }
+        .chat-msg {
+            text-shadow: 1px 1px 0 #000;
+            animation: fadein 0.3s;
+        }
+
+        /* ボスバー */
+        .boss-bar-bg {
+            background-color: #4a0d4a;
+            border: 2px solid #2a002a;
+            height: 20px;
+            position: relative;
+            margin-bottom: 4px;
+        }
+        .boss-bar-fill {
+            background-color: #d63dd6;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+            box-shadow: inset 0 2px 0 rgba(255,255,255,0.3);
+        }
+
+        /* バトルフィールド */
+        .battle-stage {
+            height: 200px;
+            position: relative;
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            padding: 0 40px;
+            overflow: visible;
+        }
+        
+        /* SVG設定 */
+        .pixel-art {
+            image-rendering: pixelated;
+            shape-rendering: crispEdges;
+            filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.5));
+        }
+
+        /* アニメーション */
+        @keyframes hero-attack {
+            0% { transform: translateX(0) rotate(0); }
+            20% { transform: translateX(40px) rotate(-10deg); }
+            50% { transform: translateX(80px) rotate(45deg); }
+            100% { transform: translateX(0) rotate(0); }
+        }
+        .anim-attack { animation: hero-attack 0.4s ease-out; }
+
+        @keyframes mob-damage {
+            0% { filter: brightness(1); transform: translateX(0); }
+            10% { filter: brightness(2) sepia(1) saturate(5) hue-rotate(-50deg); transform: translateX(10px); }
+            30% { filter: brightness(1); transform: translateX(-10px); }
+            50% { filter: brightness(2) sepia(1) saturate(5) hue-rotate(-50deg); transform: translateX(10px); }
+            100% { filter: brightness(1); transform: translateX(0); }
+        }
+        .anim-damage { animation: mob-damage 0.5s; }
+
+        @keyframes mob-die {
+            0% { transform: scale(1) rotate(0); opacity: 1; }
+            50% { transform: scale(0.8) rotate(90deg); opacity: 0.5; }
+            100% { transform: scale(0) rotate(180deg); opacity: 0; }
+        }
+        .anim-die { animation: mob-die 0.5s forwards; }
+
+        @keyframes mob-attack {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(-100px) scale(1.2); }
+            100% { transform: translateX(0); }
+        }
+        .anim-mob-attack { animation: mob-attack 0.4s ease-in-out; }
+
+        @keyframes shake-screen {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-10px) translateY(5px); }
+            40% { transform: translateX(10px) translateY(-5px); }
+            60% { transform: translateX(-10px) translateY(-5px); }
+            80% { transform: translateX(10px) translateY(5px); }
+        }
+        .anim-shake { animation: shake-screen 0.4s; }
+
+        /* レスポンシブ */
+        .game-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            grid-template-rows: auto 1fr auto;
+            gap: 16px;
+            height: 100%;
+            padding: 16px;
+        }
+        @media (max-width: 1024px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto auto;
+            }
+            .chat-panel, .inv-panel { display: none; }
+        }
+
+        /* エラーログ用 */
+        #error-console {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: rgba(255,0,0,0.9);
+            color: white;
+            padding: 10px;
+            font-size: 14px;
+            z-index: 9999;
+            display: none;
+            white-space: pre-wrap;
+            border-bottom: 2px solid yellow;
+        }
+    </style>
+</head>
+<body>
+    <!-- エラー表示領域 -->
+    <div id="error-console"></div>
+
+    <div id="start-screen" class="fixed inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-4">
+        <div class="text-center mb-8 relative">
+            <h1 class="text-6xl md:text-8xl font-bold text-[#aaaaaa] mb-2 drop-shadow-[6px_6px_0_#222] relative z-10">
+                <span class="text-white">九九</span>クラフト
+            </h1>
+            <div class="text-yellow-300 text-xl md:text-3xl font-bold drop-shadow-md animate-pulse absolute -bottom-4 right-0 rotate-[-10deg]">DX Battle Edition</div>
+        </div>
+        
+        <div class="mc-window p-6 w-full max-w-2xl text-center">
+            <h2 class="text-2xl font-bold mb-4">ワールドを選択 (だん)</h2>
+            <div class="grid grid-cols-5 gap-2 md:gap-3 mb-4">
+                <button onclick="Game.start(1)" class="mc-btn h-14 md:h-16 text-2xl font-bold">1</button>
+                <button onclick="Game.start(2)" class="mc-btn h-14 md:h-16 text-2xl font-bold">2</button>
+                <button onclick="Game.start(3)" class="mc-btn h-14 md:h-16 text-2xl font-bold">3</button>
+                <button onclick="Game.start(4)" class="mc-btn h-14 md:h-16 text-2xl font-bold">4</button>
+                <button onclick="Game.start(5)" class="mc-btn h-14 md:h-16 text-2xl font-bold">5</button>
+                <button onclick="Game.start(6)" class="mc-btn h-14 md:h-16 text-2xl font-bold">6</button>
+                <button onclick="Game.start(7)" class="mc-btn h-14 md:h-16 text-2xl font-bold">7</button>
+                <button onclick="Game.start(8)" class="mc-btn h-14 md:h-16 text-2xl font-bold">8</button>
+                <button onclick="Game.start(9)" class="mc-btn h-14 md:h-16 text-2xl font-bold">9</button>
+                <button onclick="Game.start('random')" class="mc-btn h-14 md:h-16 text-xl font-bold text-[#ffff55] bg-[#555555]">ランダム</button>
+            </div>
+            <p class="text-gray-700 text-sm font-bold">モンスターを倒して進め！(キーボード対応)</p>
+        </div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="game-screen" class="game-layout hidden opacity-0 transition-opacity duration-500">
+        
+        <!-- ヘッダー: ボスバー -->
+        <div class="col-span-full flex justify-center items-center pt-2 relative z-10">
+            <div class="w-full max-w-2xl text-center">
+                <div class="text-white text-shadow text-lg font-bold mb-1" id="boss-name">Monster Horde</div>
+                <div class="boss-bar-bg">
+                    <div id="progress-bar" class="boss-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 左サイド: チャットログ -->
+        <div class="chat-panel flex flex-col justify-end pb-4">
+            <div class="chat-bg p-2 h-80 overflow-y-auto rounded flex flex-col-reverse text-base md:text-lg custom-scroll" id="chat-log">
+                <div class="chat-msg text-yellow-300">&lt;System&gt; バトル開始！</div>
+            </div>
+        </div>
+
+        <!-- 中央: バトル & 問題 -->
+        <div class="flex flex-col items-center justify-center relative w-full h-full">
+            
+            <!-- バトルステージ -->
+            <div class="battle-stage w-full max-w-3xl mb-4">
+                <!-- 勇者 -->
+                <div id="hero" class="w-32 h-32 md:w-48 md:h-48 relative transition-transform">
+                    <svg viewBox="0 0 16 16" class="w-full h-full pixel-art">
+                        <!-- Steve Head -->
+                        <rect x="4" y="0" width="8" height="8" fill="#e0a080"/> <!-- Face -->
+                        <rect x="4" y="0" width="8" height="2" fill="#3a2010"/> <!-- Hair -->
+                        <rect x="4" y="2" width="1" height="3" fill="#3a2010"/> <!-- Sideburns -->
+                        <rect x="11" y="2" width="1" height="3" fill="#3a2010"/>
+                        <rect x="5" y="3" width="2" height="1" fill="#fff"/> <!-- Eyes -->
+                        <rect x="9" y="3" width="2" height="1" fill="#fff"/>
+                        <rect x="6" y="3" width="1" height="1" fill="#30f"/> <!-- Pupils -->
+                        <rect x="10" y="3" width="1" height="1" fill="#30f"/>
+                        <rect x="6" y="5" width="4" height="1" fill="#a06040"/> <!-- Nose -->
+                        <rect x="6" y="6" width="4" height="1" fill="#804020"/> <!-- Mouth -->
+                        <!-- Body -->
+                        <rect x="4" y="8" width="8" height="6" fill="#00a0a0"/> <!-- Shirt -->
+                        <rect x="4" y="12" width="8" height="4" fill="#303080"/> <!-- Pants -->
+                        <!-- Arm (Sword) -->
+                        <g id="hero-arm" transform="rotate(-10, 12, 10)">
+                            <rect x="11" y="8" width="3" height="6" fill="#e0a080"/>
+                            <!-- Sword -->
+                            <path d="M12 10 L14 8 L16 6 L17 5 L16 4 L14 6 L12 8 Z" fill="#ccc" stroke="#888" stroke-width="0.5"/>
+                            <rect x="11" y="9" width="4" height="1" fill="#642"/> <!-- Hilt -->
+                        </g>
+                    </svg>
+                </div>
+
+                <!-- VS エフェクト -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div id="hit-effect" class="text-6xl font-bold text-red-500 drop-shadow-lg scale-0 transition-transform duration-100">BAM!</div>
+                </div>
+
+                <!-- 敵キャラ (JSで入れ替え) -->
+                <div id="mob-container" class="w-32 h-32 md:w-48 md:h-48 relative">
+                    <!-- SVG Mobs go here -->
+                </div>
+            </div>
+
+            <!-- 問題ボード -->
+            <div id="board" class="wood-sign bg-[#754d28] border-[6px] border-[#52341b] p-6 w-full max-w-md text-center shadow-2xl relative z-20">
+                <div class="absolute inset-0 border-[4px] border-[#916236] pointer-events-none"></div>
+                
+                <div class="flex justify-between items-center mb-2 px-2">
+                    <div class="text-gray-300 text-sm opacity-80">Battle Math</div>
+                    <div class="flex gap-1" id="hearts-area"></div>
+                </div>
+
+                <div id="q-text" class="text-6xl md:text-7xl font-bold text-white drop-shadow-[4px_4px_0_#000] mb-4 tracking-wider">
+                    ? x ?
+                </div>
+                
+                <!-- 入力欄 -->
+                <div class="bg-black border-4 border-gray-600 w-40 h-16 mx-auto flex items-center justify-center mb-2 shadow-inner">
+                    <span id="input-display" class="text-4xl text-white font-bold"></span>
+                </div>
+
+                <div id="feedback" class="h-6 text-xl font-bold text-yellow-400 drop-shadow-md"></div>
+            </div>
+
+        </div>
+
+        <!-- 右サイド: インベントリ -->
+        <div class="inv-panel flex flex-col gap-4">
+            <div class="mc-window p-2">
+                <h3 class="text-center font-bold mb-1 text-sm">Inventory</h3>
+                <div id="inv-container" class="grid grid-cols-4 gap-1 p-1 bg-[#8b8b8b] border-2 border-white border-r-[#555] border-b-[#555]">
+                    <!-- Slots will be generated by JS -->
+                </div>
+            </div>
+            
+            <div class="mc-window p-4 text-center">
+                <div class="text-xs text-gray-600 font-bold">SCORE</div>
+                <div class="text-4xl font-bold text-green-700" id="score-display">0</div>
+            </div>
+        </div>
+
+        <!-- 下部: キーパッド -->
+        <div class="col-span-full flex justify-center items-end pb-2 md:pb-6 relative z-30">
+            <div class="bg-[#c6c6c6] p-2 border-4 border-[#373737] border-t-white border-l-white flex gap-1 md:gap-2 shadow-2xl rounded">
+                <div class="grid grid-flow-col gap-1 md:gap-2">
+                    <button onclick="Game.keyInput(1)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">1</button>
+                    <button onclick="Game.keyInput(2)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">2</button>
+                    <button onclick="Game.keyInput(3)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">3</button>
+                    <button onclick="Game.keyInput(4)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">4</button>
+                    <button onclick="Game.keyInput(5)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">5</button>
+                    <button onclick="Game.keyInput(6)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">6</button>
+                    <button onclick="Game.keyInput(7)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">7</button>
+                    <button onclick="Game.keyInput(8)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">8</button>
+                    <button onclick="Game.keyInput(9)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">9</button>
+                    <button onclick="Game.keyInput(0)" class="hotbar-slot w-12 h-12 md:w-16 md:h-16">0</button>
+                </div>
+                <div class="w-1 md:w-2"></div>
+                <button onclick="Game.keyClear()" class="hotbar-slot w-12 h-12 md:w-16 md:h-16 bg-red-900/40 text-red-200">C</button>
+                <button onclick="Game.submit()" class="hotbar-slot w-16 h-12 md:w-24 md:h-16 bg-green-900/40 text-green-200 font-bold border-green-400">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- リザルト -->
+    <div id="result-modal" class="fixed inset-0 bg-black/85 z-50 hidden flex items-center justify-center p-4">
+        <div class="mc-window p-8 text-center max-w-lg w-full">
+            <h2 class="text-3xl font-bold text-yellow-600 mb-2">QUEST COMPLETED!</h2>
+            <div class="text-sm text-gray-600 mb-4">Total Score</div>
+            <div class="text-6xl font-bold mb-6" id="final-score">0</div>
+            
+            <div class="bg-[#222] border-2 border-[#555] p-4 mb-6 text-left text-white max-h-48 overflow-y-auto custom-scroll" id="review-area"></div>
+
+            <button onclick="location.reload()" class="mc-btn w-full h-14 text-xl font-bold">タイトルへ戻る</button>
+        </div>
+    </div>
+
+    <script>
+        // --- エラー監視 ---
+        window.onerror = function(msg, url, line, col, error) {
+            const div = document.getElementById('error-console');
+            if(div) {
+                div.style.display = 'block';
+                div.innerHTML += `<div>❌ Error: ${msg} (Line ${line})</div>`;
+            }
+            console.error("Game Error:", error);
+            // 音声エラーなどは無視したいのでfalseを返さない（デフォルトの動作をさせる）
+            return false; 
+        };
+
+        // --- Data Definitions ---
+        const MOBS = {
+            zombie: `<svg viewBox="0 0 16 16" class="w-full h-full pixel-art"><rect x="4" y="0" width="8" height="8" fill="#206030"/><rect x="4" y="0" width="8" height="2" fill="#104020"/><rect x="5" y="3" width="2" height="1" fill="#000"/><rect x="9" y="3" width="2" height="1" fill="#000"/><rect x="6" y="5" width="4" height="1" fill="#104020"/><rect x="4" y="8" width="8" height="6" fill="#00a0a0"/><rect x="4" y="12" width="8" height="4" fill="#303080"/><rect x="2" y="8" width="2" height="6" fill="#206030" transform="rotate(-90, 4, 8) translate(-4, 4)"/><rect x="12" y="8" width="2" height="6" fill="#206030" transform="rotate(90, 12, 8) translate(4, 4)"/></svg>`,
+            skeleton: `<svg viewBox="0 0 16 16" class="w-full h-full pixel-art"><rect x="4" y="0" width="8" height="8" fill="#ddd"/><rect x="5" y="3" width="2" height="1" fill="#222"/><rect x="9" y="3" width="2" height="1" fill="#222"/><rect x="7" y="5" width="2" height="1" fill="#222"/><rect x="5" y="7" width="6" height="1" fill="#222"/><rect x="5" y="8" width="6" height="6" fill="#ccc"/><rect x="4" y="12" width="8" height="4" fill="#ddd"/><rect x="12" y="8" width="1" height="8" fill="#642"/></svg>`,
+            creeper: `<svg viewBox="0 0 16 16" class="w-full h-full pixel-art"><rect x="4" y="0" width="8" height="8" fill="#40a040"/><rect x="5" y="2" width="2" height="2" fill="#000"/><rect x="9" y="2" width="2" height="2" fill="#000"/><rect x="7" y="4" width="2" height="3" fill="#000"/><rect x="6" y="5" width="1" height="3" fill="#000"/><rect x="9" y="5" width="1" height="3" fill="#000"/><rect x="5" y="8" width="6" height="8" fill="#40a040"/><rect x="4" y="14" width="2" height="2" fill="#000"/><rect x="10" y="14" width="2" height="2" fill="#000"/></svg>`,
+            dragon: `<svg viewBox="0 0 32 32" class="w-full h-full pixel-art"><rect x="8" y="10" width="16" height="8" fill="#111"/><rect x="12" y="12" width="4" height="2" fill="#d0d"/><rect x="2" y="12" width="8" height="4" fill="#222"/><rect x="14" y="16" width="10" height="10" fill="#111"/><path d="M0 10 L8 18 L0 26 Z" fill="#222"/><path d="M32 10 L24 18 L32 26 Z" fill="#222"/></svg>`
+        };
+
+        const ITEMS_SVG = [
+            '<svg viewBox="0 0 16 16" class="w-full h-full"><circle cx="8" cy="8" r="5" fill="#222"/><path d="M6 6h2v2H6z" fill="#444"/></svg>', // Coal
+            '<svg viewBox="0 0 16 16" class="w-full h-full"><rect x="4" y="4" width="8" height="8" fill="#ccc"/><rect x="6" y="6" width="2" height="4" fill="#eee"/></svg>', // Iron
+            '<svg viewBox="0 0 16 16" class="w-full h-full"><rect x="4" y="4" width="8" height="8" fill="#fd0"/><rect x="5" y="5" width="3" height="3" fill="#ff8"/></svg>', // Gold
+            '<svg viewBox="0 0 16 16" class="w-full h-full"><path d="M8 2 L14 8 L8 14 L2 8 Z" fill="#4ff"/><path d="M8 4 L12 8 L8 12 L4 8 Z" fill="#8ff"/></svg>' // Diamond
+        ];
+
+        /* --- Audio System (Safe) --- */
+        const sfx = {
+            ctx: null,
+            init: function() {
+                try {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if(AC && !sfx.ctx) sfx.ctx = new AC();
+                    if(sfx.ctx && sfx.ctx.state === 'suspended') sfx.ctx.resume().catch(e => console.warn(e));
+                } catch(e){ console.warn(e); }
+            },
+            play: function(type) {
+                try {
+                    if(!sfx.ctx) return;
+                    const t = sfx.ctx.currentTime;
+                    const o = sfx.ctx.createOscillator();
+                    const g = sfx.ctx.createGain();
+                    o.connect(g); g.connect(sfx.ctx.destination);
+                    
+                    if(type==='click') {
+                        o.type='square'; o.frequency.setValueAtTime(600,t); o.frequency.exponentialRampToValueAtTime(100,t+0.05);
+                        g.gain.setValueAtTime(0.05,t); g.gain.linearRampToValueAtTime(0,t+0.05);
+                        o.start(t); o.stop(t+0.05);
+                    } else if(type==='attack') {
+                        try {
+                            const noise = sfx.ctx.createBufferSource();
+                            const buffer = sfx.ctx.createBuffer(1, sfx.ctx.sampleRate * 0.1, sfx.ctx.sampleRate);
+                            const data = buffer.getChannelData(0);
+                            for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
+                            noise.buffer = buffer;
+                            const filter = sfx.ctx.createBiquadFilter();
+                            filter.type = 'lowpass'; filter.frequency.value = 1000;
+                            noise.connect(filter); filter.connect(g);
+                            g.gain.setValueAtTime(0.2, t); g.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+                            noise.start(t);
+                        } catch(e) { /* Buffer Error Ignore */ }
+                    } else if(type==='damage') {
+                        o.type='sawtooth'; o.frequency.setValueAtTime(100,t); o.frequency.linearRampToValueAtTime(50,t+0.2);
+                        g.gain.setValueAtTime(0.2,t); g.gain.linearRampToValueAtTime(0,t+0.2);
+                        o.start(t); o.stop(t+0.2);
+                    } else if(type==='pop') {
+                        o.type='sine'; o.frequency.setValueAtTime(800,t); o.frequency.exponentialRampToValueAtTime(1200,t+0.1);
+                        g.gain.setValueAtTime(0.1,t); g.gain.linearRampToValueAtTime(0,t+0.1);
+                        o.start(t); o.stop(t+0.1);
+                    }
+                } catch(e) { console.warn("Audio play failed", e); }
+            }
+        };
+
+        /* --- Game Logic --- */
+        const Game = {
+            state: {
+                questions: [],
+                idx: 0,
+                score: 0,
+                hearts: 5,
+                input: "",
+                mistakes: []
+            },
+
+            log: function(msg, color="text-white") {
+                const div = document.createElement('div');
+                div.className = `chat-msg ${color}`;
+                div.innerHTML = msg;
+                const box = document.getElementById('chat-log');
+                if(box) box.insertBefore(div, box.firstChild);
+            },
+
+            start: function(mode) {
+                try {
+                    // UI Switch
+                    document.getElementById('start-screen').classList.add('hidden');
+                    const game = document.getElementById('game-screen');
+                    game.classList.remove('hidden');
+                    setTimeout(()=>game.classList.remove('opacity-0'), 100);
+
+                    // Audio Init
+                    sfx.init();
+                    sfx.play('click');
+                    
+                    // Question Gen
+                    let pool = [];
+                    if(mode === 'random') {
+                        for(let i=1;i<=9;i++) for(let j=1;j<=9;j++) pool.push({a:i, b:j, ans:i*j});
+                        pool.sort(()=>Math.random()-0.5);
+                        Game.state.questions = pool.slice(0, 20);
+                    } else {
+                        for(let j=1;j<=9;j++) pool.push({a:mode, b:j, ans:mode*j});
+                        pool.sort(()=>Math.random()-0.5);
+                        Game.state.questions = pool;
+                    }
+
+                    Game.state.idx = 0;
+                    Game.state.score = 0;
+                    Game.state.hearts = 5;
+                    Game.state.mistakes = [];
+                    Game.state.input = "";
+
+                    Game.updateHearts();
+                    Game.updateProgress();
+
+                    // Inv Clear
+                    const inv = document.getElementById('inv-container');
+                    inv.innerHTML = "";
+                    for(let i=0;i<20;i++) {
+                        inv.innerHTML += `<div class="w-full aspect-square bg-[#8b8b8b] border-2 border-[#373737] border-r-white border-b-white flex items-center justify-center" id="slot-${i}"></div>`;
+                    }
+
+                    Game.log(`&lt;System&gt; バトル開始！ 敵の群れが現れた！`, "text-yellow-300");
+                    Game.spawnMob();
+                    Game.nextQ();
+                } catch(e) {
+                    alert("Error starting game: " + e.message);
+                    console.error(e);
+                }
+            },
+
+            spawnMob: function() {
+                try {
+                    const mobContainer = document.getElementById('mob-container');
+                    mobContainer.innerHTML = "";
+                    mobContainer.className = "w-32 h-32 md:w-48 md:h-48 relative transition-transform";
+
+                    const total = Game.state.questions.length || 1;
+                    const progress = Game.state.idx / total;
+                    let mobSvg = MOBS.zombie;
+                    let name = "Zombie";
+                    
+                    if(progress > 0.8) { mobSvg = MOBS.dragon; name = "Ender Dragon"; }
+                    else if(progress > 0.6) { mobSvg = MOBS.creeper; name = "Creeper"; }
+                    else if(progress > 0.3) { mobSvg = MOBS.skeleton; name = "Skeleton"; }
+
+                    mobContainer.innerHTML = mobSvg;
+                    document.getElementById('boss-name').innerText = name + (progress > 0.8 ? " (BOSS)" : "");
+                } catch(e) { console.error("Spawn Error", e); }
+            },
+
+            nextQ: function() {
+                try {
+                    if(Game.state.idx >= Game.state.questions.length) {
+                        Game.finish();
+                        return;
+                    }
+                    const q = Game.state.questions[Game.state.idx];
+                    document.getElementById('q-text').innerText = `${q.a} × ${q.b}`;
+                    Game.state.input = "";
+                    Game.renderInput();
+                    document.getElementById('feedback').innerText = "";
+                    
+                    const mob = document.getElementById('mob-container');
+                    if(mob && mob.classList.contains('opacity-0')) {
+                        Game.spawnMob();
+                        mob.classList.remove('opacity-0');
+                    }
+                } catch(e) { console.error("NextQ Error", e); }
+            },
+
+            keyInput: function(n) {
+                sfx.play('click');
+                if(Game.state.input.length < 3) {
+                    Game.state.input += n;
+                    Game.renderInput();
+                }
+            },
+            keyClear: function() {
+                sfx.play('click');
+                Game.state.input = "";
+                Game.renderInput();
+            },
+            renderInput: function() {
+                document.getElementById('input-display').innerText = Game.state.input;
+            },
+
+            submit: function() {
+                if(!Game.state.input) return;
+                const q = Game.state.questions[Game.state.idx];
+                const ans = parseInt(Game.state.input);
+                const hero = document.getElementById('hero');
+                const mob = document.getElementById('mob-container');
+
+                if(ans === q.ans) {
+                    sfx.play('attack');
+                    hero.classList.remove('anim-attack');
+                    void hero.offsetWidth;
+                    hero.classList.add('anim-attack');
+
+                    setTimeout(() => {
+                        sfx.play('pop');
+                        mob.classList.add('anim-damage');
+                        const hit = document.getElementById('hit-effect');
+                        hit.style.transform = "scale(1.5) rotate(10deg)";
+                        hit.style.opacity = "1";
+                        setTimeout(() => { hit.style.transform = "scale(0)"; hit.style.opacity = "0"; }, 200);
+                        setTimeout(() => { mob.classList.add('anim-die'); }, 250);
+                    }, 200);
+
+                    Game.state.score += 10;
+                    Game.log(`&lt;Player&gt; ${q.a}x${q.b}=${q.ans}! クリティカルヒット！`, "text-green-300");
+                    
+                    const slot = Game.state.idx; 
+                    if(slot < 20) {
+                        let itemIdx = 0;
+                        if(Game.state.idx > 5) itemIdx = 1;
+                        if(Game.state.idx > 10) itemIdx = 2;
+                        if(Game.state.idx > 15) itemIdx = 3;
+                        const slotEl = document.getElementById(`slot-${slot}`);
+                        if(slotEl) slotEl.innerHTML = ITEMS_SVG[itemIdx];
+                    }
+                    document.getElementById('feedback').innerText = "NICE!!";
+                    
+                    Game.state.idx++;
+                    setTimeout(() => { Game.spawnMob(); Game.nextQ(); }, 800);
+
+                } else {
+                    sfx.play('damage');
+                    Game.state.hearts--;
+                    Game.state.mistakes.push(q);
+                    mob.classList.remove('anim-mob-attack');
+                    void mob.offsetWidth;
+                    mob.classList.add('anim-mob-attack');
+                    document.body.classList.add('anim-shake');
+                    setTimeout(() => document.body.classList.remove('anim-shake'), 400);
+
+                    Game.log(`&lt;Enemy&gt; 攻撃を受けた！ 正解は ${q.ans} だ...`, "text-red-400");
+                    Game.updateHearts();
+                    document.getElementById('feedback').innerText = `正解: ${q.ans}`;
+                    
+                    if(Game.state.hearts <= 0) {
+                        Game.log("&lt;System&gt; 目の前が真っ暗になった...", "text-red-600");
+                        setTimeout(() => Game.finish(), 1500);
+                    } else {
+                        Game.state.idx++;
+                        setTimeout(() => Game.nextQ(), 1500);
+                    }
+                }
+                Game.updateProgress();
+                document.getElementById('score-display').innerText = Game.state.score;
+            },
+
+            updateHearts: function() {
+                const area = document.getElementById('hearts-area');
+                if(area) {
+                    area.innerHTML = "";
+                    for(let i=0; i<5; i++) {
+                        const color = i < Game.state.hearts ? "#f00" : "#333";
+                        area.innerHTML += `<svg viewBox="0 0 10 10" class="w-6 h-6"><path fill="${color}" d="M2 2h2v1H2zM5 2h2v1H5zM1 3h1v1H1zM4 3h1v1H4zM7 3h1v1H7zM1 4h1v1H1zM7 4h1v1H7zM2 5h1v1H2zM6 5h1v1H6zM3 6h1v1H3zM5 6h1v1H5zM4 7h1v1H4z"/></svg>`;
+                    }
+                }
+            },
+
+            updateProgress: function() {
+                const total = Game.state.questions.length || 1;
+                const pct = (Game.state.idx / total) * 100;
+                const bar = document.getElementById('progress-bar');
+                if(bar) bar.style.width = `${pct}%`;
+            },
+
+            finish: function() {
+                document.getElementById('result-modal').classList.remove('hidden');
+                document.getElementById('final-score').innerText = Game.state.score;
+                const review = document.getElementById('review-area');
+                if(Game.state.mistakes.length === 0) {
+                    review.innerHTML = "<div class='text-green-400 font-bold'>完全勝利！ワールドは救われた！</div>";
+                } else {
+                    review.innerHTML = "<div class='text-red-400 font-bold mb-2'>討伐失敗リスト:</div>" + 
+                    Game.state.mistakes.map(m => `<div class="border-b border-gray-600 py-1">${m.a} × ${m.b} = <span class="text-yellow-400">${m.ans}</span></div>`).join('');
+                }
+            }
+        };
+
+        // Keyboard Event
+        document.addEventListener('keydown', (e) => {
+            const gameScreen = document.getElementById('game-screen');
+            if(gameScreen && gameScreen.classList.contains('hidden')) return;
+            
+            if(e.key >= '0' && e.key <= '9') Game.keyInput(e.key);
+            else if (e.key === 'Backspace') {
+                if(Game.state.input.length > 0) {
+                    Game.state.input = Game.state.input.slice(0, -1);
+                    Game.renderInput();
+                }
+            }
+            else if (e.key === 'Enter') Game.submit();
+            else if (e.key.toLowerCase() === 'c') Game.keyClear();
+        });
+    </script>
+</body>
+</html>
